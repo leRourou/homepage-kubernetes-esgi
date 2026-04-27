@@ -1,0 +1,577 @@
+image:
+  repository: ghcr.io/gethomepage/homepage
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+allowedHosts: "homepage.localhost,homepage.homepage.svc.cluster.local,*"
+
+# ──────────────────────────────────────────────
+# Replicas
+# ──────────────────────────────────────────────
+replicaCount: 2
+
+# ──────────────────────────────────────────────
+# Service Account
+# ──────────────────────────────────────────────
+serviceAccount:
+  create: true
+  annotations: {}
+
+# ──────────────────────────────────────────────
+# Service
+# ──────────────────────────────────────────────
+service:
+  type: ClusterIP
+  port: 3000
+
+# ──────────────────────────────────────────────
+# Ingress
+# ──────────────────────────────────────────────
+ingress:
+  enabled: true
+  className: nginx
+  host: homepage.localhost
+  annotations: {}
+  tls:
+    enabled: false
+    secretName: homepage-tls
+
+# ──────────────────────────────────────────────
+# Sticky Sessions (nginx)
+# ──────────────────────────────────────────────
+stickySession:
+  enabled: true
+  cookieName: route
+  cookieExpires: "172800" # 2 days
+
+# ──────────────────────────────────────────────
+# Ressources
+# ──────────────────────────────────────────────
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# ──────────────────────────────────────────────
+# HPA
+# ──────────────────────────────────────────────
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# ──────────────────────────────────────────────
+# Affinity
+# ──────────────────────────────────────────────
+podAntiAffinity:
+  # "preferred" (dev/kind) ou "required" (prod)
+  mode: preferred
+
+# ──────────────────────────────────────────────
+# PodDisruptionBudget
+# ──────────────────────────────────────────────
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# ──────────────────────────────────────────────
+# Security Context
+# ──────────────────────────────────────────────
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+# ──────────────────────────────────────────────
+# Security Context
+# ──────────────────────────────────────────────
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  capabilities:
+    drop:
+      - ALL
+
+# ──────────────────────────────────────────────
+# Probes
+# ──────────────────────────────────────────────
+probes:
+  startup:
+    failureThreshold: 12
+    periodSeconds: 5
+  liveness:
+    initialDelaySeconds: 15
+    periodSeconds: 20
+    failureThreshold: 3
+  readiness:
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    failureThreshold: 3
+
+# ──────────────────────────────────────────────
+# Homepage
+# ──────────────────────────────────────────────
+config:
+  # settings.yaml
+  settings: |
+    title: Homepage des big boss
+    theme: dark
+    color: violet
+    headerStyle: boxed
+    target: _blank
+
+  # services.yaml
+  services: |
+    - Monitoring:
+        - Grafana:
+            href: http://grafana.localhost
+            description: Dashboards & visualisation
+            icon: grafana.png
+            widget:
+              type: grafana
+              url: http://homepage-grafana.homepage.svc.cluster.local
+              username: admin
+              password: adminchangeme
+        - Prometheus:
+            href: http://prometheus.localhost
+            description: Métriques cluster
+            icon: prometheus.png
+            widget:
+              type: prometheus
+              url: http://homepage-kube-prometheus-s-prometheus.homepage.svc.cluster.local:9090
+        - AlertManager:
+            href: http://alertmanager.localhost
+            description: Gestion des alertes
+            icon: alertmanager.png
+    - Dashboards homepage:
+        - HPA Scaling homepage:
+            href: http://grafana.localhost/d/homepage-hpa/hpa-scaling-homepage
+            description: Réplicas & métriques HPA homepage en temps réel
+            icon: grafana.png
+        - Self-Healing homepage:
+            href: http://grafana.localhost/d/homepage-self-healing/self-healing-homepage
+            description: Résilience pods homepage & redémarrages
+            icon: grafana.png
+    - Backup:
+        - Velero:
+            href: http://prometheus.localhost/graph?g0.expr=velero_backup_total&g0.tab=0
+            description: Backup quotidien namespace homepage — rétention 30j
+            icon: velero.png
+        - Garage S3:
+            href: http://garage.localhost
+            description: Object storage S3-compatible — backend Velero
+            icon: minio.png
+    - Services:
+        - homepage:
+            href: http://homepage.localhost
+            description: Dashboard principal self-hosted
+            icon: homepage.png
+            ping: http://homepage.homepage.svc.cluster.local:3000
+
+  # widgets.yaml
+  widgets: |
+    - resources:
+        cpu: true
+        memory: true
+        label: System
+    - kubernetes:
+        cluster:
+          show: true
+          cpu: true
+          memory: true
+          showLabel: true
+          label: Cluster
+        nodes:
+          show: true
+          cpu: true
+          memory: true
+          showLabel: true
+    - grafana:
+        url: http://homepage-grafana.homepage.svc.cluster.local
+        username: admin
+        password: adminchangeme
+
+  # bookmarks.yaml
+  bookmarks: |
+    - Developer:
+        - GitHub:
+            - href: https://github.com
+              icon: github.png
+        - StackOverflow:
+            - href: https://stackoverflow.com
+              icon: stackoverflow.png
+
+  # custom.css — thème Cyberpunk
+  customCSS: |
+    /* ═══════════════════════════════════════════════
+       CYBERPUNK — Homepage Theme
+       Deep black | Neon cyan | Neon magenta
+       ═══════════════════════════════════════════════ */
+
+    /* ── Base background ── */
+    html, body {
+      background: #060614 !important;
+    }
+
+    /* Background image — remplacer bg-cyberpunk.jpg par ton image dans /app/public/images/ */
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image: url('/images/bg-cyberpunk.jpg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      opacity: 0.18;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #page-wrapper {
+      position: relative;
+      z-index: 1;
+      background:
+        radial-gradient(ellipse 100% 60% at 50% -10%, rgba(120, 0, 255, 0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 80% 40% at 10% 90%, rgba(0, 180, 255, 0.08) 0%, transparent 60%) !important;
+      min-height: 100vh;
+    }
+
+    /* ── Override CSS color variables → near-black indigo/violet palette ── */
+    :root {
+      --color-50:  230 235 255;
+      --color-100: 180 190 255;
+      --color-200: 120 130 220;
+      --color-300:  80  90 180;
+      --color-400:  40  50 140;
+      --color-500:  20  25 100;
+      --color-600:  10  12  70;
+      --color-700:   6   7  40;
+      --color-800:   4   4  25;
+      --color-900:   3   3  15;
+      --color-950:   1   1   8;
+    }
+
+    /* ── Category/group headers ── */
+    #page-wrapper h2 {
+      color: #00e5ff !important;
+      text-shadow: 0 0 10px rgba(0, 229, 255, 0.65), 0 0 30px rgba(0, 229, 255, 0.3);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    /* ── Service/bookmark cards — glass neon ── */
+    #page-wrapper li > div {
+      background: rgba(0, 8, 28, 0.85) !important;
+      border: 1px solid rgba(0, 200, 255, 0.18) !important;
+      box-shadow:
+        0 0 15px rgba(0, 200, 255, 0.05),
+        inset 0 1px 0 rgba(0, 200, 255, 0.07) !important;
+      transition: all 0.25s ease !important;
+    }
+
+    #page-wrapper li > div:hover {
+      border-color: rgba(0, 255, 255, 0.55) !important;
+      box-shadow:
+        0 0 28px rgba(0, 255, 255, 0.18),
+        0 4px 20px rgba(0, 0, 0, 0.6),
+        inset 0 1px 0 rgba(0, 255, 255, 0.15) !important;
+      transform: translateY(-2px);
+    }
+
+    /* ── Online status dot ── */
+    .w-2.h-2.rounded-full {
+      box-shadow: 0 0 6px #00ff88, 0 0 14px rgba(0, 255, 136, 0.5) !important;
+    }
+
+    /* ── Top header / sticky bar ── */
+    header, [class*="sticky"] > div {
+      background: rgba(3, 3, 20, 0.92) !important;
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(0, 200, 255, 0.12) !important;
+    }
+
+    /* ── Neon scan-lines overlay (très subtil) ── */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 3px,
+        rgba(0, 255, 255, 0.012) 3px,
+        rgba(0, 255, 255, 0.012) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ── Scrollbar neon ── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: #060614; }
+    ::-webkit-scrollbar-thumb { background: rgba(0, 200, 255, 0.3); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(0, 255, 255, 0.65); }
+
+  # docker.yaml
+  docker: ""
+
+  # kubernetes.yaml — active la découverte de services via annotations
+  kubernetes: |
+    mode: cluster
+
+nodeSelector: {}
+tolerations: []
+podAnnotations: {}
+
+# ──────────────────────────────────────────────
+# ServiceMonitor (Prometheus scrape)
+# ──────────────────────────────────────────────
+serviceMonitor:
+  enabled: true
+  interval: 30s
+  scrapeTimeout: 10s
+
+# ──────────────────────────────────────────────
+# kube-prometheus-stack (Prometheus + Grafana + AlertManager)
+# ──────────────────────────────────────────────
+kube-prometheus-stack:
+  enabled: true
+
+  prometheus:
+    ingress:
+      enabled: true
+      ingressClassName: nginx
+      hosts:
+        - prometheus.localhost
+    prometheusSpec:
+      retention: 15d
+      retentionSize: "4GB"
+      resources:
+        requests:
+          cpu: 200m
+          memory: 512Mi
+        limits:
+          cpu: 1000m
+          memory: 1Gi
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 5Gi
+
+  alertmanager:
+    ingress:
+      enabled: true
+      ingressClassName: nginx
+      hosts:
+        - alertmanager.localhost
+    alertmanagerSpec:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 200m
+          memory: 128Mi
+      storage:
+        volumeClaimTemplate:
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 1Gi
+
+  grafana:
+    adminPassword: "adminchangeme"
+    grafana.ini:
+      auth.anonymous:
+        enabled: true
+        org_role: Viewer
+      security:
+        allow_embedding: true
+    ingress:
+      enabled: true
+      ingressClassName: nginx
+      hosts:
+        - grafana.localhost
+    initChownData:
+      enabled: false
+    persistence:
+      enabled: true
+      size: 2Gi
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    defaultDashboardsTimezone: Europe/Paris
+    sidecar:
+      dashboards:
+        enabled: true
+      datasources:
+        enabled: true
+
+  prometheusOperator:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+
+  # Désactivé pour cluster kind (pas de metrics-server requis)
+  kubeControllerManager:
+    enabled: false
+  kubeScheduler:
+    enabled: false
+  kubeEtcd:
+    enabled: false
+  kubeProxy:
+    enabled: false
+
+# ──────────────────────────────────────────────
+# loki-stack (Loki + Promtail)
+# ──────────────────────────────────────────────
+loki-stack:
+  enabled: true
+
+  loki:
+    enabled: true
+    isDefault: false
+    persistence:
+      enabled: true
+      size: 5Gi
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    config:
+      table_manager:
+        retention_deletes_enabled: true
+        retention_period: 168h
+
+  promtail:
+    enabled: true
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
+
+  grafana:
+    enabled: false  # Grafana géré par kube-prometheus-stack
+
+# ──────────────────────────────────────────────
+# Garage — object storage S3-compatible (backend Velero)
+# ──────────────────────────────────────────────
+garage:
+  enabled: true
+
+  image:
+    repository: dxflrs/garage
+    tag: v1.0.0
+
+  persistence:
+    meta:
+      size: 1Gi
+      storageClass: standard
+    data:
+      size: 5Gi
+      storageClass: standard
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  config:
+    region: garage
+    # openssl rand -hex 32
+    rpcSecret: "4425f5c26c5e11581d3223904324dcb5b5d5dfb14e5e7f35e38c595424f5f1e6"
+    adminToken: "s3cr3t-g4r4g3-4dm1n-t0k3n-f0r-v3l3r0-backups"
+
+  # Clé S3 pré-définie importée dans Garage par l'init Job
+  veleroKey:
+    accessKeyId: "GK31c2f218a2e44f485b86880a"
+    secretAccessKey: "b397642d29bee6bc5d2b2bba36cb9ca4f9f3f88f1a3ca3b12be3b4b26e16bba4"
+
+  ingress:
+    enabled: true
+    host: garage.localhost
+
+# ──────────────────────────────────────────────
+# Velero — sauvegarde Kubernetes (livrable ESGI)
+# ──────────────────────────────────────────────
+velero:
+  enabled: true
+
+  # Pas de snapshots de volumes (kind sans CSI snapshotter)
+  snapshotsEnabled: false
+  deployNodeAgent: false
+
+  # Plugin AWS pour le backend S3-compatible (Garage)
+  initContainers:
+  - name: velero-plugin-for-aws
+    image: velero/velero-plugin-for-aws:v1.11.0
+    imagePullPolicy: IfNotPresent
+    volumeMounts:
+    - mountPath: /target
+      name: plugins
+
+  configuration:
+    backupStorageLocation:
+    - name: default
+      provider: aws
+      bucket: velero-backups
+      default: true
+      config:
+        region: garage
+        s3ForcePathStyle: "true"
+        s3Url: http://garage.homepage.svc.cluster.local:3900
+    volumeSnapshotLocation: []
+
+  credentials:
+    useSecret: true
+    existingSecret: velero-s3-credentials
+
+  # Backup quotidien du namespace homepage, rétention 30j
+  schedules:
+    homepage-daily:
+      disabled: false
+      schedule: "0 2 * * *"
+      template:
+        includedNamespaces:
+        - homepage
+        ttl: "720h0m0s"
+        storageLocation: default
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  upgradeCRDs: true

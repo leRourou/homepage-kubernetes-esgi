@@ -1,0 +1,85 @@
+{{- if .Values.garage.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: garage
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: garage
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  replicas: 1
+  serviceName: garage-headless
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: garage
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: garage
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+      - name: garage
+        image: "{{ .Values.garage.image.repository }}:{{ .Values.garage.image.tag }}"
+        imagePullPolicy: IfNotPresent
+        command: ["/garage", "server"]
+        ports:
+        - containerPort: 3900
+          name: s3
+        - containerPort: 3901
+          name: rpc
+        - containerPort: 3903
+          name: admin
+        readinessProbe:
+          tcpSocket:
+            port: 3900
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 3
+        livenessProbe:
+          tcpSocket:
+            port: 3900
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          failureThreshold: 3
+        resources:
+          {{- toYaml .Values.garage.resources | nindent 10 }}
+        volumeMounts:
+        - name: config
+          mountPath: /etc/garage.toml
+          subPath: garage.toml
+        - name: meta
+          mountPath: /var/lib/garage/meta
+        - name: data
+          mountPath: /var/lib/garage/data
+      volumes:
+      - name: config
+        configMap:
+          name: garage-config
+  volumeClaimTemplates:
+  - metadata:
+      name: meta
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      {{- if .Values.garage.persistence.meta.storageClass }}
+      storageClassName: {{ .Values.garage.persistence.meta.storageClass }}
+      {{- end }}
+      resources:
+        requests:
+          storage: {{ .Values.garage.persistence.meta.size }}
+  - metadata:
+      name: data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      {{- if .Values.garage.persistence.data.storageClass }}
+      storageClassName: {{ .Values.garage.persistence.data.storageClass }}
+      {{- end }}
+      resources:
+        requests:
+          storage: {{ .Values.garage.persistence.data.size }}
+{{- end }}

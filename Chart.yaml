@@ -1,0 +1,29 @@
+apiVersion: v2
+name: homepage
+description: A Helm chart for deploying gethomepage.dev on Kubernetes (kind) with HA, HPA, rolling updates and self-healing.
+type: application
+version: 1.0.0
+appVersion: "latest"
+keywords:
+  - homepage
+  - dashboard
+  - kubernetes
+home: https://gethomepage.dev
+sources:
+  - https://github.com/gethomepage/homepage
+maintainers:
+  - name: devops
+
+dependencies:
+  - name: kube-prometheus-stack
+    version: "84.1.0"
+    repository: https://prometheus-community.github.io/helm-charts
+    condition: kube-prometheus-stack.enabled
+  - name: loki-stack
+    version: "2.10.3"
+    repository: https://grafana.github.io/helm-charts
+    condition: loki-stack.enabled
+  - name: velero
+    version: "12.0.1"
+    repository: https://vmware-tanzu.github.io/helm-charts
+    condition: velero.enabled

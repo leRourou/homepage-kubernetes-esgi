@@ -1,0 +1,48 @@
+{{- if .Values.garage.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: garage-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: garage
+    app.kubernetes.io/instance: {{ .Release.Name }}
+data:
+  garage.toml: |
+    replication_factor = 1
+    consistency_mode = "consistent"
+
+    metadata_dir = "/var/lib/garage/meta"
+    data_dir     = "/var/lib/garage/data"
+    db_engine    = "lmdb"
+
+    rpc_secret      = {{ .Values.garage.config.rpcSecret | quote }}
+    rpc_bind_addr   = "[::]:3901"
+    rpc_public_addr = "garage-0.garage-headless.{{ .Release.Namespace }}.svc.cluster.local:3901"
+    bootstrap_peers = []
+
+    [s3_api]
+    api_bind_addr = "[::]:3900"
+    s3_region     = {{ .Values.garage.config.region | quote }}
+    root_domain   = ".s3.garage.localhost"
+
+    [admin]
+    api_bind_addr = "0.0.0.0:3903"
+    admin_token   = {{ .Values.garage.config.adminToken | quote }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: velero-s3-credentials
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: garage
+    app.kubernetes.io/instance: {{ .Release.Name }}
+type: Opaque
+stringData:
+  # AWS INI format required by Velero's AWS plugin
+  cloud: |
+    [default]
+    aws_access_key_id={{ .Values.garage.veleroKey.accessKeyId }}
+    aws_secret_access_key={{ .Values.garage.veleroKey.secretAccessKey }}
+{{- end }}

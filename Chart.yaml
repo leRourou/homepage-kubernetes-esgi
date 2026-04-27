@@ -15,10 +15,6 @@ maintainers:
   - name: devops
 
 dependencies:
-  - name: kube-prometheus-stack
-    version: "84.1.0"
-    repository: https://prometheus-community.github.io/helm-charts
-    condition: kube-prometheus-stack.enabled
   - name: loki-stack
     version: "2.10.3"
     repository: https://grafana.github.io/helm-charts

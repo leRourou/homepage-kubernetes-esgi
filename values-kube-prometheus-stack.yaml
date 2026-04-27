@@ -5,6 +5,12 @@ prometheus:
     hosts:
       - prometheus.localhost
   prometheusSpec:
+    # Découverte de TOUS les ServiceMonitors, quelle que soit leur release label
+    serviceMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorSelector: {}
+    serviceMonitorNamespaceSelector: {}
+    podMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelector: {}
     retention: 15d
     retentionSize: "4GB"
     resources:

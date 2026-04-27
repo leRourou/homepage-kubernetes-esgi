@@ -340,107 +340,10 @@ serviceMonitor:
   scrapeTimeout: 10s
 
 # ──────────────────────────────────────────────
-# kube-prometheus-stack (Prometheus + Grafana + AlertManager)
+# kube-prometheus-stack — installé séparément (voir values-kube-prometheus-stack.yaml)
 # ──────────────────────────────────────────────
 kube-prometheus-stack:
-  enabled: true
-
-  prometheus:
-    ingress:
-      enabled: true
-      ingressClassName: nginx
-      hosts:
-        - prometheus.localhost
-    prometheusSpec:
-      retention: 15d
-      retentionSize: "4GB"
-      resources:
-        requests:
-          cpu: 200m
-          memory: 512Mi
-        limits:
-          cpu: 1000m
-          memory: 1Gi
-      storageSpec:
-        volumeClaimTemplate:
-          spec:
-            accessModes: ["ReadWriteOnce"]
-            resources:
-              requests:
-                storage: 5Gi
-
-  alertmanager:
-    ingress:
-      enabled: true
-      ingressClassName: nginx
-      hosts:
-        - alertmanager.localhost
-    alertmanagerSpec:
-      resources:
-        requests:
-          cpu: 50m
-          memory: 64Mi
-        limits:
-          cpu: 200m
-          memory: 128Mi
-      storage:
-        volumeClaimTemplate:
-          spec:
-            accessModes: ["ReadWriteOnce"]
-            resources:
-              requests:
-                storage: 1Gi
-
-  grafana:
-    adminPassword: "adminchangeme"
-    grafana.ini:
-      auth.anonymous:
-        enabled: true
-        org_role: Viewer
-      security:
-        allow_embedding: true
-    ingress:
-      enabled: true
-      ingressClassName: nginx
-      hosts:
-        - grafana.localhost
-    initChownData:
-      enabled: false
-    persistence:
-      enabled: true
-      size: 2Gi
-    resources:
-      requests:
-        cpu: 100m
-        memory: 128Mi
-      limits:
-        cpu: 500m
-        memory: 512Mi
-    defaultDashboardsTimezone: Europe/Paris
-    sidecar:
-      dashboards:
-        enabled: true
-      datasources:
-        enabled: true
-
-  prometheusOperator:
-    resources:
-      requests:
-        cpu: 100m
-        memory: 128Mi
-      limits:
-        cpu: 500m
-        memory: 256Mi
-
-  # Désactivé pour cluster kind (pas de metrics-server requis)
-  kubeControllerManager:
-    enabled: false
-  kubeScheduler:
-    enabled: false
-  kubeEtcd:
-    enabled: false
-  kubeProxy:
-    enabled: false
+  enabled: false
 
 # ──────────────────────────────────────────────
 # loki-stack (Loki + Promtail)

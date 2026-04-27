@@ -21,7 +21,6 @@ Dashboard d'infrastructure Kubernetes déployant [gethomepage.dev](https://getho
 - **PodDisruptionBudget** (minAvailable: 1)
 - **PodAntiAffinity** inter-nœuds (mode `preferred` par défaut)
 - **Sticky sessions** nginx (cookie)
-- **RBAC** lecture seule pour la découverte de services Kubernetes
 - **Sécurité pod** : runAsNonRoot, drop ALL capabilities
 - **Dashboards Grafana custom** : HPA + Self-Healing pour homepage et ntfy
 - **Backup quotidien** namespace `homepage` via Velero → Garage S3 (rétention 30 jours)
@@ -82,17 +81,30 @@ helm repo update
 helm dependency update ./homepage-chart
 ```
 
-### 5. Déployer le chart
+### 5. Installer kube-prometheus-stack séparément
+
+> **Pourquoi ?** `kube-prometheus-stack` dépasse la limite de 1 Mo des Secrets Helm lorsqu'il est
+> inclus comme sous-chart. Il doit être installé comme release indépendante.
+
+```bash
+helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+  --namespace homepage \
+  --create-namespace \
+  -f ./homepage-chart/values-kube-prometheus-stack.yaml \
+  --wait \
+  --timeout 5m
+```
+
+### 6. Déployer le chart homepage
 
 ```bash
 helm install homepage ./homepage-chart \
   --namespace homepage \
-  --create-namespace \
   --wait \
   --timeout 10m
 ```
 
-### 6. Vérifier le déploiement
+### 7. Vérifier le déploiement
 
 ```bash
 # Tous les pods doivent être Running/Ready
@@ -204,7 +216,7 @@ kubectl get backups -n homepage
 | `ingress.host` | `homepage.localhost` | Hostname de l'ingress |
 | `ingress.tls.enabled` | `false` | TLS via cert-manager |
 | `serviceMonitor.enabled` | `true` | Scrape Prometheus via ServiceMonitor |
-| `kube-prometheus-stack.enabled` | `true` | Active la stack monitoring |
+| `kube-prometheus-stack.enabled` | `false` | Release indépendante (voir `values-kube-prometheus-stack.yaml`) |
 | `loki-stack.enabled` | `true` | Active Loki + Promtail |
 | `velero.enabled` | `true` | Active Velero |
 | `garage.enabled` | `true` | Active Garage S3 |
@@ -214,12 +226,19 @@ kubectl get backups -n homepage
 ## Mise à jour
 
 ```bash
-helm upgrade homepage ./homepage-chart --namespace homepage --wait
+helm upgrade kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+  --namespace homepage \
+  -f ./homepage-chart/values-kube-prometheus-stack.yaml
+
+helm upgrade homepage ./homepage-chart \
+  --namespace homepage \
+  --wait
 ```
 
 ## Désinstallation
 
 ```bash
 helm uninstall homepage --namespace homepage
+helm uninstall kube-prometheus-stack --namespace homepage
 kubectl delete namespace homepage
 ```

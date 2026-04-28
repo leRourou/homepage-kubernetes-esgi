@@ -1,13 +1,4 @@
 {{- if .Values.garage.enabled }}
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: garage-init
-  namespace: {{ .Release.Namespace }}
-  labels:
-    app.kubernetes.io/name: garage-init
-    app.kubernetes.io/instance: {{ .Release.Name }}
----
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -29,7 +20,7 @@ spec:
         app.kubernetes.io/name: garage-init
     spec:
       restartPolicy: OnFailure
-      serviceAccountName: garage-init
+      automountServiceAccountToken: false
       containers:
       - name: init
         image: alpine:3.19
@@ -38,39 +29,54 @@ spec:
         - -c
         - |
           set -eo pipefail
-          apk add --no-cache curl jq kubectl -q 2>/dev/null
+          apk add --no-cache curl jq -q 2>/dev/null
 
           NS={{ .Release.Namespace }}
           GARAGE_API="http://garage.${NS}.svc.cluster.local:3903"
 
-          echo "==> Waiting for garage-0..."
-          kubectl wait pod/garage-0 -n "${NS}" --for=condition=Ready --timeout=120s
+          echo "==> Waiting for Garage admin API..."
+          until curl -sf -H "Authorization: Bearer ${ADMIN_TOKEN}" "${GARAGE_API}/v1/status" > /dev/null; do
+            echo "    not ready, retrying in 5s..."
+            sleep 5
+          done
 
-          # ── Layout (via Garage CLI) ──────────────────────────────
-          NODE_ID=$(kubectl exec garage-0 -n "${NS}" -- /garage status 2>/dev/null \
-            | awk '/^[0-9a-f]/{print $1; exit}')
+          # ── Node ID ──────────────────────────────────────────────
+          STATUS=$(curl -sf -H "Authorization: Bearer ${ADMIN_TOKEN}" "${GARAGE_API}/v1/status")
+          NODE_ID=$(echo "${STATUS}" | jq -r '.node')
           echo "==> Node ID: ${NODE_ID}"
 
-          LAYOUT_VER=$(kubectl exec garage-0 -n "${NS}" -- /garage layout show 2>/dev/null \
-            | awk '/^Current cluster layout version:/{print $NF; exit}')
-          LAYOUT_VER=${LAYOUT_VER:-0}
+          # ── Layout ───────────────────────────────────────────────
+          LAYOUT_VER=$(curl -sf -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+            "${GARAGE_API}/v1/layout" | jq -r '.version')
           echo "==> Current layout version: ${LAYOUT_VER}"
 
           if [ "${LAYOUT_VER}" = "0" ]; then
-            echo "==> Assigning layout (zone=dc1, capacity=5G)..."
-            kubectl exec garage-0 -n "${NS}" -- /garage layout assign -z dc1 -c 5G "${NODE_ID}"
+            echo "==> Assigning layout (zone=dc1, capacity=5GiB)..."
+            curl -sf -X POST \
+              -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+              -H "Content-Type: application/json" \
+              "${GARAGE_API}/v1/layout" \
+              -d "[{\"id\": \"${NODE_ID}\", \"zone\": \"dc1\", \"capacity\": 5368709120}]"
             echo "==> Applying layout v1..."
-            kubectl exec garage-0 -n "${NS}" -- /garage layout apply --version 1
+            curl -sf -X POST \
+              -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+              -H "Content-Type: application/json" \
+              "${GARAGE_API}/v1/layout/apply" \
+              -d "{\"version\": 1}"
           else
             echo "==> Layout already applied at v${LAYOUT_VER}, skipping."
           fi
 
-          # ── Bucket (via Garage CLI) ──────────────────────────────
+          # ── Bucket ───────────────────────────────────────────────
           echo "==> Creating bucket velero-backups..."
-          kubectl exec garage-0 -n "${NS}" -- /garage bucket create velero-backups \
+          curl -sf -X POST \
+            -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+            -H "Content-Type: application/json" \
+            "${GARAGE_API}/v1/bucket" \
+            -d "{\"globalAlias\": \"velero-backups\"}" \
             && echo "    bucket created" || echo "    bucket already exists"
 
-          # ── Key import (via admin HTTP API v1) ───────────────────
+          # ── Key import ───────────────────────────────────────────
           echo "==> Importing S3 key ${KEY_ID}..."
           curl -sf -X POST \
             -H "Authorization: Bearer ${ADMIN_TOKEN}" \
@@ -79,7 +85,7 @@ spec:
             -d "{\"accessKeyId\": \"${KEY_ID}\", \"secretAccessKey\": \"${SECRET_KEY}\", \"name\": \"velero-key\"}" \
             && echo "    key imported" || echo "    key may already exist"
 
-          # ── Bucket permissions (via admin HTTP API v1) ───────────
+          # ── Bucket permissions ───────────────────────────────────
           echo "==> Fetching bucket ID..."
           BUCKET_ID=$(curl -sf \
             -H "Authorization: Bearer ${ADMIN_TOKEN}" \

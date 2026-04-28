@@ -1,0 +1,391 @@
+{
+  "title": "Self-Healing - Résilience homepage",
+  "uid": "homepage-self-healing",
+  "schemaVersion": 38,
+  "version": 2,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "timezone": "browser",
+  "editable": true,
+  "graphTooltip": 1,
+  "tags": ["homepage", "self-healing"],
+  "templating": { "list": [] },
+  "annotations": { "list": [] },
+  "links": [],
+  "panels": [
+    {
+      "id": 7,
+      "title": "Pods en Running",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "green", "value": 2 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "expr": "count(kube_pod_status_phase{pod=~\"homepage-[a-z0-9]+-[a-z0-9]+\", namespace=\"homepage\", phase=\"Running\"}) or vector(0)",
+          "legendFormat": "Running",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "% Pods sains",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 50 },
+              { "color": "green", "value": 100 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "expr": "kube_deployment_status_replicas_ready{deployment=\"homepage\", namespace=\"homepage\"} / kube_deployment_spec_replicas{deployment=\"homepage\", namespace=\"homepage\"} * 100",
+          "legendFormat": "Sains",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Total Redémarrages",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "expr": "sum(kube_pod_container_status_restarts_total{pod=~\"homepage-[a-z0-9]+-[a-z0-9]+\", namespace=\"homepage\"})",
+          "legendFormat": "Restarts",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Alertes actives",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "expr": "sum(ALERTS{namespace=\"homepage\", alertstate=\"firing\"}) or vector(0)",
+          "legendFormat": "Firing",
+          "refId": "A",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "title": "Réplicas Ready vs Désirées (convergence après suppression)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 4 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "showPoints": "auto",
+            "lineWidth": 2
+          },
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Désirées" },
+            "properties": [
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [6, 3] } },
+              { "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Ready" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Disponibles" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "semi-dark-green", "mode": "fixed" } }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "expr": "kube_deployment_spec_replicas{deployment=\"homepage\", namespace=\"homepage\"}",
+          "legendFormat": "Désirées",
+          "refId": "A"
+        },
+        {
+          "expr": "kube_deployment_status_replicas_ready{deployment=\"homepage\", namespace=\"homepage\"}",
+          "legendFormat": "Ready",
+          "refId": "B"
+        },
+        {
+          "expr": "kube_deployment_status_replicas_available{deployment=\"homepage\", namespace=\"homepage\"}",
+          "legendFormat": "Disponibles",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Redémarrages de conteneurs (5 min)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "lineWidth": 1
+          },
+          "unit": "short",
+          "min": 0,
+          "color": { "fixedColor": "red", "mode": "fixed" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "expr": "increase(kube_pod_container_status_restarts_total{pod=~\"homepage-[a-z0-9]+-[a-z0-9]+\", namespace=\"homepage\"}[5m])",
+          "legendFormat": "{{pod}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "État actuel des pods",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Running" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Pending" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Failed" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }]
+          }
+        ]
+      },
+      "options": {
+        "pieType": "donut",
+        "displayLabels": ["name", "value"],
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "values": ["value", "percent"]
+        },
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "targets": [
+        {
+          "expr": "count(kube_pod_status_phase{pod=~\"homepage-[a-z0-9]+-[a-z0-9]+\", namespace=\"homepage\", phase=\"Running\"}) or vector(0)",
+          "legendFormat": "Running",
+          "refId": "A",
+          "instant": true
+        },
+        {
+          "expr": "count(kube_pod_status_phase{pod=~\"homepage-[a-z0-9]+-[a-z0-9]+\", namespace=\"homepage\", phase=\"Pending\"}) or vector(0)",
+          "legendFormat": "Pending",
+          "refId": "B",
+          "instant": true
+        },
+        {
+          "expr": "count(kube_pod_status_phase{pod=~\"homepage-[a-z0-9]+-[a-z0-9]+\", namespace=\"homepage\", phase=\"Failed\"}) or vector(0)",
+          "legendFormat": "Failed",
+          "refId": "C",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Distribution des Pods sur Nœuds (anti-affinity)",
+      "type": "bargauge",
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 20 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 3 },
+              { "color": "red", "value": 5 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "showUnfilled": true,
+        "valueMode": "color"
+      },
+      "targets": [
+        {
+          "expr": "count(kube_pod_info{pod=~\"homepage-[a-z0-9]+-[a-z0-9]+\", namespace=\"homepage\"}) by (node)",
+          "legendFormat": "{{node}}",
+          "refId": "A",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Alertes Actives — namespace homepage",
+      "type": "table",
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 26 },
+      "fieldConfig": {
+        "defaults": { "unit": "short" },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "footer": { "show": false }
+      },
+      "targets": [
+        {
+          "expr": "ALERTS{namespace=\"homepage\", alertstate=\"firing\"}",
+          "legendFormat": "{{alertname}} — {{pod}}",
+          "refId": "A",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        { "id": "organize", "options": { "excludeByName": { "Time": true, "Value": false } } }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Logs — Pods homepage",
+      "type": "logs",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 33 },
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{namespace=\"homepage\", pod=~\"homepage-[a-z0-9]+-[a-z0-9]+\"}",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}

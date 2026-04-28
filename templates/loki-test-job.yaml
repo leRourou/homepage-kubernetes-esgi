@@ -1,0 +1,93 @@
+{{- if .Values.lokiTest.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-loki-test
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: loki-test
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  annotations:
+    # Supprimer le Job manuellement après vérification des logs :
+    # kubectl delete job -n {{ .Release.Namespace }} {{ .Release.Name }}-loki-test
+    helm.sh/resource-policy: keep
+spec:
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: loki-test
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+      containers:
+        - name: loki-test
+          image: curlimages/curl:8.5.0
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              HOMEPAGE_URL="http://{{ .Release.Name }}.{{ .Release.Namespace }}.svc.cluster.local:3000"
+              LOKI_URL="http://{{ .Release.Name }}-loki.{{ .Release.Namespace }}.svc.cluster.local:3100"
+              COUNT="{{ .Values.lokiTest.requestCount | default 100 }}"
+
+              echo "================================================================"
+              echo " ÉTAPE 1 — Génération de trafic HTTP ($COUNT requêtes)"
+              echo "================================================================"
+              i=1
+              while [ "$i" -le "$COUNT" ]; do
+                if curl -sf --max-time 5 "$HOMEPAGE_URL" > /dev/null 2>&1; then
+                  printf "  [%3d/%d] OK\n" "$i" "$COUNT"
+                else
+                  printf "  [%3d/%d] FAIL\n" "$i" "$COUNT"
+                fi
+                i=$((i + 1))
+                sleep 0.3
+              done
+
+              echo ""
+              echo "================================================================"
+              echo " ÉTAPE 2 — Attente collecte Promtail (20s)"
+              echo "================================================================"
+              sleep 20
+
+              echo ""
+              echo "================================================================"
+              echo " ÉTAPE 3 — Vérification Loki"
+              echo "================================================================"
+
+              echo ""
+              echo "--- Health check ---"
+              curl -sf "$LOKI_URL/ready" && echo " [OK]" || echo " [FAIL]"
+
+              echo ""
+              echo "--- Labels disponibles dans Loki ---"
+              curl -sf "$LOKI_URL/loki/api/v1/labels"
+
+              echo ""
+              echo "--- Valeurs du label 'namespace' ---"
+              curl -sf "$LOKI_URL/loki/api/v1/label/namespace/values"
+
+              echo ""
+              echo "--- Comptage de logs (10 dernières minutes) ---"
+              NOW=$(date +%s)
+              START=$((NOW - 600))
+              curl -sf -G "$LOKI_URL/loki/api/v1/query" \
+                --data-urlencode "query=count_over_time({namespace=\"{{ .Release.Namespace }}\"}[10m])" \
+                --data-urlencode "time=${NOW}"
+
+              echo ""
+              echo "================================================================"
+              echo " TEST TERMINÉ"
+              echo "================================================================"
+{{- end }}

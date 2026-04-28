@@ -1,0 +1,75 @@
+{
+  "title": "Logs - Homepage (Loki)",
+  "uid": "loki-homepage",
+  "schemaVersion": 38,
+  "version": 2,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "timezone": "browser",
+  "editable": true,
+  "graphTooltip": 1,
+  "tags": ["homepage", "loki", "logs"],
+  "templating": { "list": [] },
+  "annotations": { "list": [] },
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Volume de logs dans le temps",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 0 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum(rate({namespace=\"homepage\"}[1m]))",
+          "legendFormat": "Logs/s"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "logs/s",
+          "color": { "fixedColor": "blue", "mode": "fixed" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "showPoints": "auto",
+            "lineWidth": 2,
+            "fillOpacity": 15
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "single", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false }
+      }
+    },
+    {
+      "id": 5,
+      "title": "Logs en temps réel — namespace homepage",
+      "type": "logs",
+      "gridPos": { "h": 16, "w": 24, "x": 0, "y": 6 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{namespace=\"homepage\"}",
+          "legendFormat": ""
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      }
+    }
+  ]
+}

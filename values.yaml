@@ -144,9 +144,6 @@ config:
             href: http://prometheus.localhost
             description: Métriques cluster
             icon: prometheus.png
-            widget:
-              type: prometheus
-              url: http://homepage-kube-prometheus-s-prometheus.homepage.svc.cluster.local:9090
         - AlertManager:
             href: http://alertmanager.localhost
             description: Gestion des alertes
@@ -160,15 +157,16 @@ config:
             href: http://grafana.localhost/d/homepage-self-healing/self-healing-homepage
             description: Résilience pods homepage & redémarrages
             icon: grafana.png
+    - Logs:
+        - Logs Homepage (Loki):
+            href: http://grafana.localhost/d/loki-homepage/logs-homepage-loki
+            description: Logs applicatifs en temps réel via Loki
+            icon: loki.png
     - Backup:
-        - Velero:
-            href: http://prometheus.localhost/graph?g0.expr=velero_backup_total&g0.tab=0
-            description: Backup quotidien namespace homepage — rétention 30j
+        - Velero UI:
+            href: http://velero-ui.localhost
+            description: Interface web — lancer et suivre les backups Velero
             icon: velero.png
-        - Garage S3:
-            href: http://garage.localhost
-            description: Object storage S3-compatible — backend Velero
-            icon: minio.png
     - Services:
         - homepage:
             href: http://homepage.localhost
@@ -208,122 +206,6 @@ config:
         - StackOverflow:
             - href: https://stackoverflow.com
               icon: stackoverflow.png
-
-  # custom.css — thème Cyberpunk
-  customCSS: |
-    /* ═══════════════════════════════════════════════
-       CYBERPUNK — Homepage Theme
-       Deep black | Neon cyan | Neon magenta
-       ═══════════════════════════════════════════════ */
-
-    /* ── Base background ── */
-    html, body {
-      background: #060614 !important;
-    }
-
-    /* Background image — remplacer bg-cyberpunk.jpg par ton image dans /app/public/images/ */
-    body::after {
-      content: "";
-      position: fixed;
-      inset: 0;
-      background-image: url('/images/bg-cyberpunk.jpg');
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-      opacity: 0.18;
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    #page-wrapper {
-      position: relative;
-      z-index: 1;
-      background:
-        radial-gradient(ellipse 100% 60% at 50% -10%, rgba(120, 0, 255, 0.12) 0%, transparent 70%),
-        radial-gradient(ellipse 80% 40% at 10% 90%, rgba(0, 180, 255, 0.08) 0%, transparent 60%) !important;
-      min-height: 100vh;
-    }
-
-    /* ── Override CSS color variables → near-black indigo/violet palette ── */
-    :root {
-      --color-50:  230 235 255;
-      --color-100: 180 190 255;
-      --color-200: 120 130 220;
-      --color-300:  80  90 180;
-      --color-400:  40  50 140;
-      --color-500:  20  25 100;
-      --color-600:  10  12  70;
-      --color-700:   6   7  40;
-      --color-800:   4   4  25;
-      --color-900:   3   3  15;
-      --color-950:   1   1   8;
-    }
-
-    /* ── Category/group headers ── */
-    #page-wrapper h2 {
-      color: #00e5ff !important;
-      text-shadow: 0 0 10px rgba(0, 229, 255, 0.65), 0 0 30px rgba(0, 229, 255, 0.3);
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-
-    /* ── Service/bookmark cards — glass neon ── */
-    #page-wrapper li > div {
-      background: rgba(0, 8, 28, 0.85) !important;
-      border: 1px solid rgba(0, 200, 255, 0.18) !important;
-      box-shadow:
-        0 0 15px rgba(0, 200, 255, 0.05),
-        inset 0 1px 0 rgba(0, 200, 255, 0.07) !important;
-      transition: all 0.25s ease !important;
-    }
-
-    #page-wrapper li > div:hover {
-      border-color: rgba(0, 255, 255, 0.55) !important;
-      box-shadow:
-        0 0 28px rgba(0, 255, 255, 0.18),
-        0 4px 20px rgba(0, 0, 0, 0.6),
-        inset 0 1px 0 rgba(0, 255, 255, 0.15) !important;
-      transform: translateY(-2px);
-    }
-
-    /* ── Online status dot ── */
-    .w-2.h-2.rounded-full {
-      box-shadow: 0 0 6px #00ff88, 0 0 14px rgba(0, 255, 136, 0.5) !important;
-    }
-
-    /* ── Top header / sticky bar ── */
-    header, [class*="sticky"] > div {
-      background: rgba(3, 3, 20, 0.92) !important;
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(0, 200, 255, 0.12) !important;
-    }
-
-    /* ── Neon scan-lines overlay (très subtil) ── */
-    body::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      background: repeating-linear-gradient(
-        0deg,
-        transparent,
-        transparent 3px,
-        rgba(0, 255, 255, 0.012) 3px,
-        rgba(0, 255, 255, 0.012) 4px
-      );
-      pointer-events: none;
-      z-index: 9999;
-    }
-
-    /* ── Scrollbar neon ── */
-    ::-webkit-scrollbar { width: 5px; height: 5px; }
-    ::-webkit-scrollbar-track { background: #060614; }
-    ::-webkit-scrollbar-thumb { background: rgba(0, 200, 255, 0.3); border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: rgba(0, 255, 255, 0.65); }
-
-  # docker.yaml
-  docker: ""
-
-  # kubernetes.yaml — active la découverte de services via annotations
   kubernetes: |
     mode: cluster
 
@@ -332,18 +214,137 @@ tolerations: []
 podAnnotations: {}
 
 # ──────────────────────────────────────────────
-# ServiceMonitor (Prometheus scrape)
+# Test Loki — Job de vérification des logs
 # ──────────────────────────────────────────────
-serviceMonitor:
-  enabled: true
-  interval: 30s
-  scrapeTimeout: 10s
+lokiTest:
+  enabled: false
+  # Nombre de requêtes HTTP envoyées à homepage pour générer du trafic
+  requestCount: 100
 
 # ──────────────────────────────────────────────
-# kube-prometheus-stack — installé séparément (voir values-kube-prometheus-stack.yaml)
+# Velero UI — interface web pour backups Velero
 # ──────────────────────────────────────────────
-kube-prometheus-stack:
-  enabled: false
+velero-ui:
+  enabled: true
+
+  configuration:
+    general:
+      veleroNamespace: "homepage"
+
+  ingress:
+    enabled: true
+    className: nginx
+    hosts:
+      - host: velero-ui.localhost
+        paths:
+          - path: /
+            pathType: Prefix
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# ──────────────────────────────────────────────
+# victoria-metrics-k8s-stack
+# ──────────────────────────────────────────────
+victoria-metrics-k8s-stack:
+  enabled: true
+
+  # Désactivé sur kind (pas d'endpoint accessible)
+  kubeControllerManager:
+    enabled: false
+  kubeScheduler:
+    enabled: false
+  kubeEtcd:
+    enabled: false
+  kubeProxy:
+    enabled: false
+
+  vmsingle:
+    spec:
+      retentionPeriod: "15d"
+      resources:
+        requests:
+          cpu: 200m
+          memory: 512Mi
+        limits:
+          cpu: 1000m
+          memory: 1Gi
+      storage:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 5Gi
+    ingress:
+      enabled: true
+      ingressClassName: nginx
+      hosts:
+        - prometheus.localhost
+
+  alertmanager:
+    spec:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 200m
+          memory: 128Mi
+      storage:
+        volumeClaimTemplate:
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 1Gi
+    ingress:
+      enabled: true
+      ingressClassName: nginx
+      hosts:
+        - alertmanager.localhost
+
+  grafana:
+    adminPassword: "adminchangeme"
+    grafana.ini:
+      auth.anonymous:
+        enabled: true
+        org_role: Viewer
+      security:
+        allow_embedding: true
+      date_formats:
+        default_timezone: Europe/Paris
+    ingress:
+      enabled: true
+      ingressClassName: nginx
+      hosts:
+        - grafana.localhost
+    initChownData:
+      enabled: false
+    persistence:
+      enabled: true
+      size: 2Gi
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    additionalDataSources:
+      - name: Loki
+        type: loki
+        uid: loki
+        url: http://homepage-loki.homepage.svc.cluster.local:3100
+        access: proxy
+        isDefault: false
+        jsonData:
+          maxLines: 1000
 
 # ──────────────────────────────────────────────
 # loki-stack (Loki + Promtail)
@@ -365,12 +366,25 @@ loki-stack:
         cpu: 500m
         memory: 512Mi
     config:
-      table_manager:
-        retention_deletes_enabled: true
+      compactor:
+        working_directory: /data/loki/boltdb-shipper-compactor
+        shared_store: filesystem
+        retention_enabled: true
+      limits_config:
+        enforce_metric_name: false
         retention_period: 168h
+      chunk_store_config:
+        max_look_back_period: 168h
+    datasource:
+      uid: "loki"
+      jsonData: |
+        maxLines: 1000
 
   promtail:
     enabled: true
+    config:
+      clients:
+        - url: http://homepage-loki:3100/loki/api/v1/push
     resources:
       requests:
         cpu: 50m
@@ -380,7 +394,7 @@ loki-stack:
         memory: 128Mi
 
   grafana:
-    enabled: false  # Grafana géré par kube-prometheus-stack
+    enabled: false  # Grafana géré par victoria-metrics-k8s-stack
 
 # ──────────────────────────────────────────────
 # Garage — object storage S3-compatible (backend Velero)
@@ -419,9 +433,6 @@ garage:
     accessKeyId: "GK31c2f218a2e44f485b86880a"
     secretAccessKey: "b397642d29bee6bc5d2b2bba36cb9ca4f9f3f88f1a3ca3b12be3b4b26e16bba4"
 
-  ingress:
-    enabled: true
-    host: garage.localhost
 
 # ──────────────────────────────────────────────
 # Velero — sauvegarde Kubernetes (livrable ESGI)
@@ -432,6 +443,11 @@ velero:
   # Pas de snapshots de volumes (kind sans CSI snapshotter)
   snapshotsEnabled: false
   deployNodeAgent: false
+
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
 
   # Plugin AWS pour le backend S3-compatible (Garage)
   initContainers:
@@ -467,6 +483,16 @@ velero:
         includedNamespaces:
         - homepage
         ttl: "720h0m0s"
+        storageLocation: default
+
+    # Backup horaire, rétention 48h
+    homepage-hourly:
+      disabled: false
+      schedule: "0 * * * *"
+      template:
+        includedNamespaces:
+        - homepage
+        ttl: "48h0m0s"
         storageLocation: default
 
   resources:

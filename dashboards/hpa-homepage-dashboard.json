@@ -1,0 +1,306 @@
+{
+  "title": "HPA - Scaling homepage",
+  "uid": "homepage-hpa",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "timezone": "browser",
+  "editable": true,
+  "graphTooltip": 1,
+  "tags": ["homepage", "hpa"],
+  "templating": { "list": [] },
+  "annotations": { "list": [] },
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Réplicas homepage (Current / Desired / Min / Max)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "showPoints": "auto",
+            "lineWidth": 2
+          },
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Min" },
+            "properties": [
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [4, 4] } },
+              { "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Max" },
+            "properties": [
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [4, 4] } },
+              { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "expr": "kube_horizontalpodautoscaler_status_current_replicas{horizontalpodautoscaler=\"homepage\", namespace=\"homepage\"}",
+          "legendFormat": "Current",
+          "refId": "A"
+        },
+        {
+          "expr": "kube_horizontalpodautoscaler_status_desired_replicas{horizontalpodautoscaler=\"homepage\", namespace=\"homepage\"}",
+          "legendFormat": "Desired",
+          "refId": "B"
+        },
+        {
+          "expr": "kube_horizontalpodautoscaler_spec_min_replicas{horizontalpodautoscaler=\"homepage\", namespace=\"homepage\"}",
+          "legendFormat": "Min",
+          "refId": "C"
+        },
+        {
+          "expr": "kube_horizontalpodautoscaler_spec_max_replicas{horizontalpodautoscaler=\"homepage\", namespace=\"homepage\"}",
+          "legendFormat": "Max",
+          "refId": "D"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Réplicas Actuelles",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 5 },
+              { "color": "red", "value": 6 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "expr": "kube_horizontalpodautoscaler_status_current_replicas{horizontalpodautoscaler=\"homepage\", namespace=\"homepage\"}",
+          "legendFormat": "Réplicas",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Réplicas Désirées",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "fixedColor": "blue", "mode": "fixed" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "blue", "value": null }]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "expr": "kube_horizontalpodautoscaler_status_desired_replicas{horizontalpodautoscaler=\"homepage\", namespace=\"homepage\"}",
+          "legendFormat": "Désirées",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Scaling Actif",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": { "text": "Inactif", "color": "blue" },
+                "1": { "text": "Actif", "color": "green" }
+              }
+            }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "expr": "kube_horizontalpodautoscaler_status_condition{horizontalpodautoscaler=\"homepage\", namespace=\"homepage\", condition=\"ScalingActive\", status=\"true\"}",
+          "legendFormat": "ScalingActive",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Limite Max Atteinte",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": { "text": "Non", "color": "green" },
+                "1": { "text": "Oui !", "color": "red" }
+              }
+            }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "expr": "(kube_horizontalpodautoscaler_status_current_replicas{horizontalpodautoscaler=\"homepage\", namespace=\"homepage\"} >= kube_horizontalpodautoscaler_spec_max_replicas{horizontalpodautoscaler=\"homepage\", namespace=\"homepage\"}) or vector(0)",
+          "legendFormat": "Max atteint",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "CPU Utilisation par Pod (%) vs Seuil HPA (70%)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "showPoints": "never",
+            "lineWidth": 2
+          },
+          "unit": "percent",
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Seuil (70%)" },
+            "properties": [
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [6, 3] } },
+              { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } },
+              { "id": "custom.lineWidth", "value": 2 }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "expr": "rate(container_cpu_usage_seconds_total{pod=~\"homepage-[a-z0-9]+-[a-z0-9]+\", container=\"homepage\", namespace=\"homepage\"}[2m]) / on(pod, namespace) kube_pod_container_resource_requests{pod=~\"homepage-[a-z0-9]+-[a-z0-9]+\", container=\"homepage\", namespace=\"homepage\", resource=\"cpu\"} * 100",
+          "legendFormat": "CPU % - {{pod}}",
+          "refId": "A"
+        },
+        {
+          "expr": "vector(70)",
+          "legendFormat": "Seuil (70%)",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Mémoire Utilisation par Pod (%) vs Seuil HPA (80%)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "showPoints": "never",
+            "lineWidth": 2
+          },
+          "unit": "percent",
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Seuil (80%)" },
+            "properties": [
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [6, 3] } },
+              { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } },
+              { "id": "custom.lineWidth", "value": 2 }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "expr": "container_memory_working_set_bytes{pod=~\"homepage-[a-z0-9]+-[a-z0-9]+\", container=\"homepage\", namespace=\"homepage\"} / on(pod, namespace) kube_pod_container_resource_requests{pod=~\"homepage-[a-z0-9]+-[a-z0-9]+\", container=\"homepage\", namespace=\"homepage\", resource=\"memory\"} * 100",
+          "legendFormat": "Mém % - {{pod}}",
+          "refId": "A"
+        },
+        {
+          "expr": "vector(80)",
+          "legendFormat": "Seuil (80%)",
+          "refId": "B"
+        }
+      ]
+    }
+  ]
+}

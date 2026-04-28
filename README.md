@@ -7,11 +7,11 @@ Dashboard d'infrastructure Kubernetes déployant [gethomepage.dev](https://getho
 | Composant | Version | Rôle |
 |-----------|---------|------|
 | Homepage | latest | Dashboard portail central |
-| kube-prometheus-stack | 84.1.0 | Prometheus + Grafana + AlertManager |
+| victoria-metrics-k8s-stack | 0.75.0 | VMSingle + VMAgent + VMAlertmanager + Grafana |
 | loki-stack | 2.10.3 | Loki (logs) + Promtail (collecte) |
 | Velero | 12.0.1 | Sauvegarde Kubernetes |
+| Velero UI | 0.14.0 | Interface web pour les backups Velero |
 | Garage | v1.0.0 | Object storage S3-compatible (backend Velero) |
-| ntfy | latest | Notifications push self-hosted |
 
 ## Fonctionnalités
 
@@ -22,8 +22,8 @@ Dashboard d'infrastructure Kubernetes déployant [gethomepage.dev](https://getho
 - **PodAntiAffinity** inter-nœuds (mode `preferred` par défaut)
 - **Sticky sessions** nginx (cookie)
 - **Sécurité pod** : runAsNonRoot, drop ALL capabilities
-- **Dashboards Grafana custom** : HPA + Self-Healing pour homepage et ntfy
-- **Backup quotidien** namespace `homepage` via Velero → Garage S3 (rétention 30 jours)
+- **Dashboards Grafana custom** : HPA, Self-Healing, Loki logs, Velero backups
+- **Backup quotidien** et **horaire** du namespace `homepage` via Velero → Garage S3
 
 ---
 
@@ -48,6 +48,19 @@ kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
   - role: control-plane
+    kubeadmConfigPatches:
+    - |
+      kind: InitConfiguration
+      nodeRegistration:
+        kubeletExtraArgs:
+          node-labels: "ingress-ready=true"
+    extraPortMappings:
+    - containerPort: 80
+      hostPort: 80
+      protocol: TCP
+    - containerPort: 443
+      hostPort: 443
+      protocol: TCP
   - role: worker
   - role: worker
   - role: worker
@@ -69,9 +82,10 @@ kubectl wait --namespace ingress-nginx \
 ### 3. Ajouter les dépôts Helm
 
 ```bash
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo add victoria-metrics https://victoriametrics.github.io/helm-charts
 helm repo add grafana https://grafana.github.io/helm-charts
 helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts
+helm repo add otwld https://helm.otwld.com/
 helm repo update
 ```
 
@@ -81,30 +95,17 @@ helm repo update
 helm dependency update ./homepage-chart
 ```
 
-### 5. Installer kube-prometheus-stack séparément
-
-> **Pourquoi ?** `kube-prometheus-stack` dépasse la limite de 1 Mo des Secrets Helm lorsqu'il est
-> inclus comme sous-chart. Il doit être installé comme release indépendante.
-
-```bash
-helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
-  --namespace homepage \
-  --create-namespace \
-  -f ./homepage-chart/values-kube-prometheus-stack.yaml \
-  --wait \
-  --timeout 5m
-```
-
-### 6. Déployer le chart homepage
+### 5. Déployer le chart homepage
 
 ```bash
 helm install homepage ./homepage-chart \
   --namespace homepage \
+  --create-namespace \
   --wait \
-  --timeout 10m
+  --timeout 15m
 ```
 
-### 7. Vérifier le déploiement
+### 6. Vérifier le déploiement
 
 ```bash
 # Tous les pods doivent être Running/Ready
@@ -121,10 +122,10 @@ kubectl get ingress -n homepage
 
 ## Accès aux services
 
-Ajouter dans `/etc/hosts` si nécessaire (normalement automatique avec kind + ingress-nginx) :
+Ajouter dans `/etc/hosts` :
 
 ```
-127.0.0.1  homepage.localhost grafana.localhost prometheus.localhost alertmanager.localhost ntfy.localhost garage.localhost
+127.0.0.1  homepage.localhost grafana.localhost prometheus.localhost alertmanager.localhost velero-ui.localhost
 ```
 
 | Service | URL | Credentials |
@@ -133,8 +134,7 @@ Ajouter dans `/etc/hosts` si nécessaire (normalement automatique avec kind + in
 | Grafana | http://grafana.localhost | admin / adminchangeme |
 | Prometheus | http://prometheus.localhost | — |
 | AlertManager | http://alertmanager.localhost | — |
-| ntfy | http://ntfy.localhost | — |
-| Garage S3 | http://garage.localhost | voir `values.yaml` |
+| Velero UI | http://velero-ui.localhost | — |
 
 ---
 
@@ -168,20 +168,47 @@ watch kubectl get hpa -n homepage
 kubectl delete pod load-test -n homepage
 ```
 
+### Test Loki (collecte des logs)
+
+Générer du trafic HTTP pour alimenter Loki, puis vérifier la collecte depuis Grafana :
+
+```bash
+# Activer le job de test (envoie 100 requêtes à homepage)
+helm upgrade homepage ./homepage-chart \
+  --namespace homepage \
+  --set lokiTest.enabled=true \
+  --set lokiTest.requestCount=100
+
+# Suivre l'exécution du job
+kubectl logs -n homepage -l job-name=homepage-loki-test -f
+
+# Désactiver après le test
+helm upgrade homepage ./homepage-chart \
+  --namespace homepage \
+  --set lokiTest.enabled=false
+```
+
+Vérifier les logs dans Grafana : http://grafana.localhost/d/loki-homepage/logs-homepage-loki
+
 ### Vérifier les dashboards Grafana
 
 | Dashboard | URL |
 |-----------|-----|
 | HPA Homepage | http://grafana.localhost/d/homepage-hpa/hpa-scaling-homepage |
 | Self-Healing Homepage | http://grafana.localhost/d/homepage-self-healing/self-healing-homepage |
-| HPA ntfy | http://grafana.localhost/d/ntfy-hpa/hpa-scaling-ntfy |
-| Self-Healing ntfy | http://grafana.localhost/d/ntfy-self-healing/self-healing-ntfy |
+| Logs Homepage (Loki) | http://grafana.localhost/d/loki-homepage/logs-homepage-loki |
+| Velero Sauvegardes | http://grafana.localhost/d/velero-backups/velero-sauvegardes-kubernetes |
 
 ---
 
 ## Sauvegarde Velero
 
-Le chart configure automatiquement une sauvegarde quotidienne (2h00 UTC) du namespace `homepage` avec rétention 30 jours, stockée dans Garage S3.
+Le chart configure automatiquement deux schedules de backup du namespace `homepage` stockés dans Garage S3 :
+
+| Schedule | Cron | Rétention |
+|----------|------|-----------|
+| `homepage-daily` | `0 2 * * *` (2h00 UTC) | 30 jours |
+| `homepage-hourly` | `0 * * * *` (toutes les heures) | 48 heures |
 
 ```bash
 # Vérifier la configuration du backup
@@ -189,7 +216,7 @@ kubectl get backupstoragelocations -n homepage
 kubectl get schedules -n homepage
 
 # Déclencher un backup manuel
-kubectl create backup homepage-manual \
+velero backup create homepage-manual \
   --include-namespaces=homepage \
   --storage-location=default \
   -n homepage
@@ -197,6 +224,8 @@ kubectl create backup homepage-manual \
 # Lister les backups disponibles
 kubectl get backups -n homepage
 ```
+
+L'interface web Velero UI est disponible sur http://velero-ui.localhost pour lancer et suivre les backups sans CLI.
 
 ---
 
@@ -215,10 +244,12 @@ kubectl get backups -n homepage
 | `podDisruptionBudget.minAvailable` | `1` | Pods minimum disponibles |
 | `ingress.host` | `homepage.localhost` | Hostname de l'ingress |
 | `ingress.tls.enabled` | `false` | TLS via cert-manager |
-| `serviceMonitor.enabled` | `true` | Scrape Prometheus via ServiceMonitor |
-| `kube-prometheus-stack.enabled` | `false` | Release indépendante (voir `values-kube-prometheus-stack.yaml`) |
+| `lokiTest.enabled` | `false` | Active le job de test Loki |
+| `lokiTest.requestCount` | `100` | Nombre de requêtes générées par le job |
+| `victoria-metrics-k8s-stack.enabled` | `true` | Active VMSingle + Grafana + VMAlertmanager |
 | `loki-stack.enabled` | `true` | Active Loki + Promtail |
 | `velero.enabled` | `true` | Active Velero |
+| `velero-ui.enabled` | `true` | Active l'interface web Velero UI |
 | `garage.enabled` | `true` | Active Garage S3 |
 
 ---
@@ -226,10 +257,6 @@ kubectl get backups -n homepage
 ## Mise à jour
 
 ```bash
-helm upgrade kube-prometheus-stack prometheus-community/kube-prometheus-stack \
-  --namespace homepage \
-  -f ./homepage-chart/values-kube-prometheus-stack.yaml
-
 helm upgrade homepage ./homepage-chart \
   --namespace homepage \
   --wait
@@ -239,6 +266,5 @@ helm upgrade homepage ./homepage-chart \
 
 ```bash
 helm uninstall homepage --namespace homepage
-helm uninstall kube-prometheus-stack --namespace homepage
 kubectl delete namespace homepage
 ```

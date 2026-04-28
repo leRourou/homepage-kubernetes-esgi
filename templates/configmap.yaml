@@ -18,8 +18,10 @@ data:
     {{- .Values.config.widgets | nindent 4 }}
   bookmarks.yaml: |
     {{- .Values.config.bookmarks | nindent 4 }}
+  {{- if .Values.config.docker }}
   docker.yaml: |
     {{- .Values.config.docker | nindent 4 }}
+  {{- end }}
   kubernetes.yaml: |
     {{- .Values.config.kubernetes | nindent 4 }}
   {{- if .Values.config.customCSS }}

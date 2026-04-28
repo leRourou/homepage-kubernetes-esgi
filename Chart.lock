@@ -1,12 +1,15 @@
 dependencies:
-- name: kube-prometheus-stack
-  repository: https://prometheus-community.github.io/helm-charts
-  version: 84.1.0
+- name: victoria-metrics-k8s-stack
+  repository: https://victoriametrics.github.io/helm-charts
+  version: 0.75.0
 - name: loki-stack
   repository: https://grafana.github.io/helm-charts
   version: 2.10.3
 - name: velero
   repository: https://vmware-tanzu.github.io/helm-charts
   version: 12.0.1
-digest: sha256:54d2e698159562afc1383d4ea91d5d557025c9fdcb22148681eb1f2ac5a16390
-generated: "2026-04-27T15:00:27.145125303+02:00"
+- name: velero-ui
+  repository: https://helm.otwld.com/
+  version: 0.14.0
+digest: sha256:17a753a3079954355a20d992c4d79b3efdc4bc901b84a9ac617cb6a118511ee5
+generated: "2026-04-28T11:38:13.881653138+02:00"

@@ -6,7 +6,9 @@ TIMEOUT   := 15m
 
 ## Première installation (ou reinstall complète) — applique les CRDs puis déploie
 install: deps
+	kubectl create namespace $(NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -
 	helm template $(RELEASE) . --namespace $(NAMESPACE) --include-crds \
+	  | python3 -c "import sys,yaml; docs=[d for d in yaml.safe_load_all(sys.stdin) if d and d.get('kind')=='CustomResourceDefinition']; print('\n---\n'.join(yaml.dump(d) for d in docs))" \
 	  | kubectl apply --server-side -f - --field-manager=helm
 	helm upgrade --install $(RELEASE) . \
 	  --namespace $(NAMESPACE) --create-namespace \

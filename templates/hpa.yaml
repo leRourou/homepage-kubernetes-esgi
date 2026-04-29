@@ -32,15 +32,15 @@ spec:
           averageUtilization: {{ .Values.autoscaling.targetMemoryUtilizationPercentage }}
   behavior:
     scaleUp:
-      stabilizationWindowSeconds: 30
+      stabilizationWindowSeconds: {{ .Values.autoscaling.behavior.scaleUp.stabilizationWindowSeconds }}
       policies:
         - type: Pods
-          value: 2
-          periodSeconds: 30
+          value: {{ .Values.autoscaling.behavior.scaleUp.pods }}
+          periodSeconds: {{ .Values.autoscaling.behavior.scaleUp.periodSeconds }}
     scaleDown:
-      stabilizationWindowSeconds: 300
+      stabilizationWindowSeconds: {{ .Values.autoscaling.behavior.scaleDown.stabilizationWindowSeconds }}
       policies:
         - type: Pods
-          value: 1
-          periodSeconds: 60
+          value: {{ .Values.autoscaling.behavior.scaleDown.pods }}
+          periodSeconds: {{ .Values.autoscaling.behavior.scaleDown.periodSeconds }}
 {{- end }}

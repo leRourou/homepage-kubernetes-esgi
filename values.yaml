@@ -64,6 +64,15 @@ autoscaling:
   maxReplicas: 6
   targetCPUUtilizationPercentage: 70
   targetMemoryUtilizationPercentage: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      pods: 2
+      periodSeconds: 30
+    scaleDown:
+      stabilizationWindowSeconds: 60
+      pods: 2
+      periodSeconds: 30
 
 # ──────────────────────────────────────────────
 # Affinity

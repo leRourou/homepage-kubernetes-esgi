@@ -56,7 +56,7 @@ spec:
               -H "Authorization: Bearer ${ADMIN_TOKEN}" \
               -H "Content-Type: application/json" \
               "${GARAGE_API}/v1/layout" \
-              -d "[{\"id\": \"${NODE_ID}\", \"zone\": \"dc1\", \"capacity\": 5368709120}]"
+              -d "{\"addOrChange\": [{\"id\": \"${NODE_ID}\", \"zone\": \"dc1\", \"capacity\": 5368709120, \"tags\": []}], \"remove\": []}"
             echo "==> Applying layout v1..."
             curl -sf -X POST \
               -H "Authorization: Bearer ${ADMIN_TOKEN}" \

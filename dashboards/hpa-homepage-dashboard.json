@@ -2,7 +2,7 @@
   "title": "HPA - Scaling homepage",
   "uid": "homepage-hpa",
   "schemaVersion": 38,
-  "version": 1,
+  "version": 2,
   "refresh": "30s",
   "time": { "from": "now-1h", "to": "now" },
   "timezone": "browser",
@@ -144,7 +144,7 @@
       "id": 4,
       "title": "Scaling Actif",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 8 },
+      "gridPos": { "h": 4, "w": 12, "x": 12, "y": 8 },
       "fieldConfig": {
         "defaults": {
           "unit": "short",
@@ -173,43 +173,6 @@
         {
           "expr": "kube_horizontalpodautoscaler_status_condition{horizontalpodautoscaler=\"homepage\", namespace=\"homepage\", condition=\"ScalingActive\", status=\"true\"}",
           "legendFormat": "ScalingActive",
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "id": 5,
-      "title": "Limite Max Atteinte",
-      "type": "stat",
-      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 8 },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "0": { "text": "Non", "color": "green" },
-                "1": { "text": "Oui !", "color": "red" }
-              }
-            }
-          ],
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"] },
-        "orientation": "auto",
-        "textMode": "auto",
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center"
-      },
-      "targets": [
-        {
-          "expr": "(kube_horizontalpodautoscaler_status_current_replicas{horizontalpodautoscaler=\"homepage\", namespace=\"homepage\"} >= kube_horizontalpodautoscaler_spec_max_replicas{horizontalpodautoscaler=\"homepage\", namespace=\"homepage\"}) or vector(0)",
-          "legendFormat": "Max atteint",
           "refId": "A"
         }
       ]
@@ -247,7 +210,7 @@
       },
       "targets": [
         {
-          "expr": "rate(container_cpu_usage_seconds_total{pod=~\"homepage-[a-z0-9]+-[a-z0-9]+\", container=\"homepage\", namespace=\"homepage\"}[2m]) / on(pod, namespace) kube_pod_container_resource_requests{pod=~\"homepage-[a-z0-9]+-[a-z0-9]+\", container=\"homepage\", namespace=\"homepage\", resource=\"cpu\"} * 100",
+          "expr": "rate(container_cpu_usage_seconds_total{pod=~\"homepage-[a-z0-9]+-[a-z0-9]+\", container=\"homepage\", namespace=\"homepage\", image!=\"\"}[2m]) / on(pod, namespace, container) group_left() kube_pod_container_resource_requests{pod=~\"homepage-[a-z0-9]+-[a-z0-9]+\", container=\"homepage\", namespace=\"homepage\", resource=\"cpu\"} * 100",
           "legendFormat": "CPU % - {{pod}}",
           "refId": "A"
         },
@@ -291,7 +254,7 @@
       },
       "targets": [
         {
-          "expr": "container_memory_working_set_bytes{pod=~\"homepage-[a-z0-9]+-[a-z0-9]+\", container=\"homepage\", namespace=\"homepage\"} / on(pod, namespace) kube_pod_container_resource_requests{pod=~\"homepage-[a-z0-9]+-[a-z0-9]+\", container=\"homepage\", namespace=\"homepage\", resource=\"memory\"} * 100",
+          "expr": "container_memory_working_set_bytes{pod=~\"homepage-[a-z0-9]+-[a-z0-9]+\", container=\"homepage\", namespace=\"homepage\", image!=\"\"} / on(pod, namespace, container) group_left() kube_pod_container_resource_requests{pod=~\"homepage-[a-z0-9]+-[a-z0-9]+\", container=\"homepage\", namespace=\"homepage\", resource=\"memory\"} * 100",
           "legendFormat": "Mém % - {{pod}}",
           "refId": "A"
         },
@@ -299,6 +262,31 @@
           "expr": "vector(80)",
           "legendFormat": "Seuil (80%)",
           "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Logs erreurs/warnings pendant la fenêtre de scaling",
+      "type": "logs",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 20 },
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{namespace=\"homepage\", pod=~\"homepage-[a-z0-9]+-[a-z0-9]+\"} |~ \"(?i)(error|warn|fatal|panic|oom)\"",
+          "legendFormat": "",
+          "refId": "A"
         }
       ]
     }

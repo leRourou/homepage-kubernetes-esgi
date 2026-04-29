@@ -11,5 +11,8 @@ dependencies:
 - name: velero-ui
   repository: https://helm.otwld.com/
   version: 0.14.0
-digest: sha256:17a753a3079954355a20d992c4d79b3efdc4bc901b84a9ac617cb6a118511ee5
-generated: "2026-04-28T11:38:13.881653138+02:00"
+- name: metrics-server
+  repository: https://kubernetes-sigs.github.io/metrics-server/
+  version: 3.12.2
+digest: sha256:d4581aafc5682656d63e45eb3ed2fba3313117a1d802727eaface677191f9f82
+generated: "2026-04-28T16:38:40.729687355+02:00"

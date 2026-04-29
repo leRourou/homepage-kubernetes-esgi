@@ -50,7 +50,7 @@ stickySession:
 resources:
   requests:
     cpu: 100m
-    memory: 128Mi
+    memory: 192Mi
   limits:
     cpu: 500m
     memory: 512Mi
@@ -140,14 +140,6 @@ config:
               url: http://homepage-grafana.homepage.svc.cluster.local
               username: admin
               password: adminchangeme
-        - Prometheus:
-            href: http://prometheus.localhost
-            description: Métriques cluster
-            icon: prometheus.png
-        - AlertManager:
-            href: http://alertmanager.localhost
-            description: Gestion des alertes
-            icon: alertmanager.png
     - Dashboards homepage:
         - HPA Scaling homepage:
             href: http://grafana.localhost/d/homepage-hpa/hpa-scaling-homepage
@@ -156,6 +148,10 @@ config:
         - Self-Healing homepage:
             href: http://grafana.localhost/d/homepage-self-healing/self-healing-homepage
             description: Résilience pods homepage & redémarrages
+            icon: grafana.png
+        - Cluster CPU & Mémoire:
+            href: http://grafana.localhost/d/cluster-cpu-memory/cluster-cpu-memoire
+            description: CPU et mémoire du cluster par noeud en temps réel
             icon: grafana.png
     - Logs:
         - Logs Homepage (Loki):
@@ -167,12 +163,6 @@ config:
             href: http://velero-ui.localhost
             description: Interface web — lancer et suivre les backups Velero
             icon: velero.png
-    - Services:
-        - homepage:
-            href: http://homepage.localhost
-            description: Dashboard principal self-hosted
-            icon: homepage.png
-            ping: http://homepage.homepage.svc.cluster.local:3000
 
   # widgets.yaml
   widgets: |
@@ -504,3 +494,11 @@ velero:
       memory: 512Mi
 
   upgradeCRDs: true
+
+# ──────────────────────────────────────────────
+# Metrics Server
+# ──────────────────────────────────────────────
+metrics-server:
+  enabled: true
+  args:
+    - --kubelet-insecure-tls

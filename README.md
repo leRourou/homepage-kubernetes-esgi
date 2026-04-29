@@ -134,7 +134,7 @@ Ajouter dans `/etc/hosts` :
 | Grafana | http://grafana.localhost | admin / adminchangeme |
 | Prometheus | http://prometheus.localhost | — |
 | AlertManager | http://alertmanager.localhost | — |
-| Velero UI | http://velero-ui.localhost | — |
+| Velero UI | http://velero-ui.localhost | admin / admin |
 
 ---
 
